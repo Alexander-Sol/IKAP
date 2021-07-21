@@ -28,17 +28,19 @@ ComputeMarkers <- function(sobj, gap.gain, candidates, out.dir){
     ggsave(TSNEPlot(sobj, do.return = T), filename = paste0(out.dir,"/",clustering.label,"_tSNE.pdf"))
 
     sobj.markers <- FindAllMarkers(object= sobj, only.pos = TRUE, min.pct = 0.25, thresh.use = 0.25)
+    if ("avg_logFC" %in% names(sobj.markers)) { fc.label <- "avg_logFC" }
+    else if ("avg_log2FC" %in% names(sobj.markers)) { fc.label <- "avg_log2FC" }
 
     sobj.markers$AUROC <- NA
     for(j in 1:nrow(sobj.markers)){
       sobj.markers$AUROC[j] <- roc.curve(scores.class0 = sobj@data[sobj.markers$gene[j],], weights.class0 = sobj@ident == sobj.markers$cluster[j])$auc
     }
 
-    top.10 <- sobj.markers %>% group_by(cluster) %>% top_n(10, avg_log2FC)
+    top.10 <- sobj.markers %>% group_by(cluster) %>% top_n(10, !!fc.label) # !! unquotes fc.label, see https://tidyeval.tidyverse.org/dplyr.html
     ggsave(DoHeatmap(object = sobj, genes.use = top.10$gene, slim.col.label = TRUE, remove.key = TRUE, cex.row = 7),
            filename = paste0(out.dir,"/",clustering.label,"_DE_genes_LCF.png"), units = "in", width = 12, height = 8)
 
-    out.xls[[clustering.label]] <- sobj.markers[,c("gene","p_val","avg_log2FC","pct.1","pct.2","p_val_adj","cluster","AUROC")]
+    out.xls[[clustering.label]] <- sobj.markers[,c("gene","p_val", fc.label,"pct.1","pct.2","p_val_adj","cluster","AUROC")]
     markers.all[[clustering.label]] <- sobj.markers
   }
 
